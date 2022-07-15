@@ -6,6 +6,14 @@ Vim's git client
 
 TDB
 
+## Usage
+
+Load/Open main dashboard
+
+```
+:OrdinaryMerge
+```
+
 ## License
 
 MIT License
