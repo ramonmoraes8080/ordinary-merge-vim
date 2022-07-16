@@ -10,10 +10,12 @@ if exists("g:loaded_omerge")
     finish
 endif
 
-
+let s:columns_break_point = 140  " get max with &columns
+" The Event Hook for Resizing - autocmd VimResized * exe "normal \<c-w>="
 let g:loaded_omerge = 1
 " Window IDs
 " ----------------------------------------------------------------------------
+let s:win_id_branches_list = 0
 let s:win_id_commits_list = 0
 let s:win_id_commit_details = 0
 let s:win_id_commit_files = 0
@@ -23,7 +25,13 @@ let s:win_id_commit_diff = 0
 let s:om_selected_commit_hash = ''
 " Config & Misc
 " ----------------------------------------------------------------------------
-let g:om_commits_window_size = 10
+let g:om_commits_window_size = 80
+
+" Helpers
+" ----------------------------------------------------------------------------
+function! s:IsCurrBufferEmpty()
+    return line('$') == 1 && getline(1) == ''
+endfunction
 
 " Git Wrapper Functions
 " ----------------------------------------------------------------------------
@@ -33,6 +41,11 @@ function! s:GitGetCurrentBranchName()
     return trim(system(l:cmd))
 endfunction
 
+function! s:GitGetBranchesList()
+    let l:cmd = 'git --no-pager branch'
+    return systemlist(l:cmd)
+endfunction
+    
 function! s:GitGetCommitsFromBranch(branch_name)
     let l:cmd = 'git --no-pager log --pretty=oneline --abbrev-commit ' . a:branch_name
     return systemlist(l:cmd)
@@ -76,36 +89,85 @@ function! s:OrdinaryMergeDashboard() abort
 
     "set splitbelow  " This works but lets experiment
 
+    " 0 - Branches List
+    let s:win_id_branches_list = win_getid()
+    call setline('.', s:win_id_branches_list)
+
+    map <buffer> <enter> :OrdinaryMergeRenderBranch<CR>
+
     " 1st - Commits List
+    bot new
     let s:win_id_commits_list = win_getid()
     call setline('.', s:win_id_commits_list)
 
+    map <buffer> <enter> :OrdinaryMergeRenderCommitDetails<CR>
+    map <buffer> b :OrdinaryMergeChangeWindowFocus "branches_list"<CR>
+
     " 2nd - Commit Meta Data
-    wincmd n  " Creating new Window with new Buffer
+    "wincmd n  " Creating new Window (at top) with new Buffer = :split and :enew
+    bot new
     let s:win_id_commit_details = win_getid()
     call setline('.', s:win_id_commit_details)
 
+    map <buffer> b :OrdinaryMergeChangeWindowFocus "branches_list"<CR>
+    map <buffer> c :OrdinaryMergeChangeWindowFocus "commits_list"<CR>
+
     " 3rd - Files from selected Commit
-    wincmd n
+    "wincmd n
+    bot new
     let s:win_id_commit_files = win_getid()
     call setline('.', s:win_id_commit_files)
 
     map <buffer> <enter> :OrdinaryMergeRenderFileDiff<CR>
 
     " 4th - Diff from a single Commit's File
-    wincmd n
+    "wincmd n
+    botright vnew
     let s:win_id_commit_diff = win_getid()
     call setline('.', s:win_id_commit_diff)
     set syntax=diff
 
+    map <buffer> b :OrdinaryMergeChangeWindowFocus "branches_list"<CR>
+    map <buffer> c :OrdinaryMergeChangeWindowFocus "commits_list"<CR>
+    map <buffer> f :OrdinaryMergeChangeWindowFocus "commit_files"<CR>
+
+    call s:OrdinaryMergeRenderBranchesList()
+
     " Going back to the 1st Window (Commits list) and adjust some Event/Maps
     " for this Window (Buffer) only
+    call s:OrdinaryMergeRenderCommitsList()
+
+    " Resizing the left side of the split
+    " vertical resize 80 " TODO using g:om_commits_window_size results in width == 1
+    let l:width_size = g:om_commits_window_size
+    execute ':vertical resize ' . l:width_size
+
+    call s:OrdinaryMergeRenderCommitDetails()
+endfunction
+
+function! s:OrdinaryMergeRenderBranch(...)
+    call win_gotoid(s:win_id_branches_list)
+    " Recoveing name of selected branch
+    let s:om_selected_branch = getline('.')
+    " Cleaning up possible * chareacter
+    let s:om_selected_branch = substitute(s:om_selected_branch, '\(\*\s\)\?\(.*\)', '\2', 'g')
+    " echom "Selected branch " . s:om_selected_branch
+    call s:OrdinaryMergeRenderCommitsList()
+endfunction
+
+function! s:OrdinaryMergeRenderBranchesList(...)
+    call win_gotoid(s:win_id_branches_list)
+    let l:branches = s:GitGetBranchesList()
+    call setline('.', l:branches)
+endfunction
+
+function! s:OrdinaryMergeRenderCommitsList(...)
     call win_gotoid(s:win_id_commits_list)
     let l:commits = s:GitGetCommitsFromCurrentBranch()
+    if s:IsCurrBufferEmpty() == 0
+        %delete  " wipe buffer content
+    endif
     call setline('.', l:commits)
-    "resize g:om_commits_window_size  " TODO why is this resizing to 1 line?
-    " Mapping Enter key to trigger showing details about the selected commit
-    map <buffer> <enter> :OrdinaryMergeRenderCommitDetails<CR>
 endfunction
 
 function! s:OrdinaryMergeRenderCommitDetails(...)
@@ -162,13 +224,34 @@ function! s:OrdinaryMergeRenderFileDiff(...)
         
         " Rendering DIFF
         let l:diff = s:GitGetFileDiff(l:commit_hash, s:file_path)
+        if s:IsCurrBufferEmpty() == 0
+            %delete  " wipe buffer content
+        endif
         call setline('.', l:diff)
+    endif
+endfunction
+
+function! s:OrdinaryMergeChangeWindowFocus(...)
+    if a:0 == 0
+        return
+    endif
+    let l:win_name = trim(a:1)
+    if l:win_name == "commits_list"
+        call win_gotoid(s:win_id_commits_list)
+    endif
+    if l:win_name == "commit_files"
+        call win_gotoid(s:win_id_commit_files)
+    endif
+    if l:win_name == "branches_list"
+        call win_gotoid(s:win_id_branches_list)
     endif
 endfunction
 
 " Exposes the plugin's functions for use as commands in Vim.
 command! -nargs=0 OrdinaryMerge call s:OrdinaryMergeDashboard()
+command! -nargs=0 OrdinaryMergeRenderBranch call s:OrdinaryMergeRenderBranch()
 command! -nargs=0 OrdinaryMergeRenderCommitDetails call s:OrdinaryMergeRenderCommitDetails()
 command! -nargs=0 OrdinaryMergeRenderFileDiff call s:OrdinaryMergeRenderFileDiff()
+command! -nargs=1 OrdinaryMergeChangeWindowFocus call s:OrdinaryMergeChangeWindowFocus(<args>)
 "command! -nargs=0 AspellCheck call omerge#AspellCheck()
 
