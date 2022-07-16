@@ -20,7 +20,7 @@ Load/Open main dashboard
 
 MIT License
 
-Copyright (c) 2020 Ramon Moraes
+Copyright (c) 2022 Ramon Moraes
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
