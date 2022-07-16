@@ -16,6 +16,25 @@ Load/Open main dashboard
 :OrdinaryMerge
 ```
 
+### Key Maps per Window
+
+- Branches List:
+  - `<Enter>` - Checkout the branch under the cursor
+  - `<c>` - Navigates to Commits List window
+  - `<f>` - Navigates to Commit Files window
+- Commits List:
+  - `<Enter>` - Render details and files related to the commit under the cursor
+- Commit Details:
+  - `<b>` - Navigates to Branches List window
+  - `<c>` - Navigates to Commit List window
+- Commit Files:
+  - `<b>` - Navigates to Branches List window
+  - `<f>` - Navigates to Commit Files window
+- File Diff:
+  - `<b>` - Navigates to Branches List window
+  - `<c>` - Navigates to Commit List window
+  - `<f>` - Navigates to Commit Files window
+
 ## License
 
 MIT License
