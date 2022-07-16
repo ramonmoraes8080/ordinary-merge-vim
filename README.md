@@ -2,6 +2,8 @@
 
 Vim's git client
 
+![Screenshot](screenshots/Screenshot_2022-07-16_14-53-38.png)
+
 ## Install
 
 TDB
